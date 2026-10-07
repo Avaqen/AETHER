@@ -1,0 +1,10 @@
+node_modules/
+.DS_Store
+*.log
+credentials.json
+*.secret
+.env
+.env.*
+coverage/
+.idea/
+.vscode/
