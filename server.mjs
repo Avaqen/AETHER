@@ -33,7 +33,7 @@ function sendJson(response, statusCode, value) {
 }
 
 export function assertLoopbackHost(host) {
-  const normalized = host.toLowerCase().replace(/^\\[|\\]$/g, '');
+  const normalized = host.toLowerCase().replace(/^\[|\]$/g, '');
   if (normalized !== 'localhost' && !(isIP(normalized) && (normalized === '127.0.0.1' || normalized === '::1'))) {
     throw new Error('The dashboard only supports localhost binding. Use an SSH tunnel for remote access.');
   }
@@ -48,11 +48,11 @@ function isLoopbackRequestHost(value) {
     if (closingBracket < 0) return false;
     hostname = value.slice(1, closingBracket);
     const suffix = value.slice(closingBracket + 1);
-    if (suffix && !/^:\\d{1,5}$/.test(suffix)) return false;
+    if (suffix && !/^:\d{1,5}$/.test(suffix)) return false;
   } else {
     const separator = value.lastIndexOf(':');
     if (separator >= 0) {
-      if (value.indexOf(':') !== separator || !/^:\\d{1,5}$/.test(value.slice(separator))) return false;
+      if (value.indexOf(':') !== separator || !/^:\d{1,5}$/.test(value.slice(separator))) return false;
       hostname = value.slice(0, separator);
     } else {
       hostname = value;
@@ -86,14 +86,14 @@ export function createApp({ snapshotProvider, credentials } = {}) {
     streamInFlight = true;
     try {
       latestSnapshot = await getSnapshot();
-      const message = `data: ${JSON.stringify(latestSnapshot)}\\n\\n`;
+      const message = `data: ${JSON.stringify(latestSnapshot)}\n\n`;
       for (const client of clients) {
         if (!client.destroyed) client.write(message);
       }
     } catch (error) {
       console.error(`Metrics snapshot unavailable: ${error.message}`);
       for (const client of clients) {
-        if (!client.destroyed) client.write('event: error\\ndata: {"error":"Metrics are temporarily unavailable"}\\n\\n');
+        if (!client.destroyed) client.write('event: error\ndata: {"error":"Metrics are temporarily unavailable"}\n\n');
       }
     } finally {
       streamInFlight = false;
@@ -139,7 +139,7 @@ export function createApp({ snapshotProvider, credentials } = {}) {
         'x-accel-buffering': 'no'
       });
       clients.add(response);
-      if (latestSnapshot) response.write(`data: ${JSON.stringify(latestSnapshot)}\\n\\n`);
+      if (latestSnapshot) response.write(`data: ${JSON.stringify(latestSnapshot)}\n\n`);
       response.on('close', () => {
         clients.delete(response);
         if (clients.size === 0 && streamTimer) {
@@ -175,7 +175,7 @@ export function createApp({ snapshotProvider, credentials } = {}) {
 }
 
 function validCredential(value) {
-  return typeof value === 'string' && value.length > 0 && !/[\\r\\n:]/.test(value);
+  return typeof value === 'string' && value.length > 0 && !/[\r\n:]/.test(value);
 }
 
 function validCredentialPair(credentials) {
@@ -256,7 +256,7 @@ export async function loadCredentials(options = {}) {
   try {
     const file = await open(path, 'wx', 0o600);
     try {
-      await file.writeFile(`${JSON.stringify(generated, null, 2)}\\n`, 'utf8');
+      await file.writeFile(`${JSON.stringify(generated, null, 2)}\n`, 'utf8');
     } finally {
       await file.close();
     }

@@ -18,9 +18,9 @@ function localIdentity() {
 }
 
 export function parseCpuStat(text) {
-  const line = text.split('\\n').find((entry) => entry.startsWith('cpu '));
+  const line = text.split('\n').find((entry) => entry.startsWith('cpu '));
   if (!line) throw new Error('CPU counters are unavailable in /proc/stat');
-  const values = line.trim().split(/\\s+/).slice(1).map(Number);
+  const values = line.trim().split(/\s+/).slice(1).map(Number);
   if (values.length < 4 || values.some((value) => !Number.isFinite(value))) {
     throw new Error('CPU counters in /proc/stat are invalid');
   }
@@ -32,8 +32,8 @@ export function parseCpuStat(text) {
 
 export function parseMemInfo(text) {
   const values = new Map(
-    text.split('\\n').flatMap((line) => {
-      const match = line.match(/^([^:]+):\\s+(\\d+)\\s+kB$/);
+    text.split('\n').flatMap((line) => {
+      const match = line.match(/^([^:]+):\s+(\d+)\s+kB$/);
       return match ? [[match[1], Number(match[2]) * 1024]] : [];
     })
   );
@@ -52,7 +52,7 @@ export function parseProcStat(text) {
   if (openParen < 0 || closeParen <= openParen) {
     throw new Error('Process stat entry is malformed');
   }
-  const fields = text.slice(closeParen + 1).trim().split(/\\s+/);
+  const fields = text.slice(closeParen + 1).trim().split(/\s+/);
   if (fields.length < 22) throw new Error('Process stat entry is incomplete');
   return {
     name: text.slice(openParen + 1, closeParen),
@@ -65,12 +65,12 @@ export function parseProcStat(text) {
 
 export function parseNetwork(text) {
   const interfaces = {};
-  for (const line of text.split('\\n').slice(2)) {
+  for (const line of text.split('\n').slice(2)) {
     const separator = line.indexOf(':');
     if (separator < 0) continue;
     const name = line.slice(0, separator).trim();
     if (!name || name === 'lo') continue;
-    const counters = line.slice(separator + 1).trim().split(/\\s+/).map(Number);
+    const counters = line.slice(separator + 1).trim().split(/\s+/).map(Number);
     if (counters.length < 9 || counters.some((value) => !Number.isFinite(value))) continue;
     interfaces[name] = { rxBytes: counters[0], txBytes: counters[8] };
   }
@@ -78,13 +78,13 @@ export function parseNetwork(text) {
 }
 
 function decodeMountField(value) {
-  return value.replace(/\\\\([0-7]{3})/g, (_, octal) => String.fromCharCode(Number.parseInt(octal, 8)));
+  return value.replace(/\\([0-7]{3})/g, (_, octal) => String.fromCharCode(Number.parseInt(octal, 8)));
 }
 
 function parseMounts(text) {
   const mounts = [];
   const seen = new Set();
-  for (const line of text.split('\\n')) {
+  for (const line of text.split('\n')) {
     const fields = line.split(' ');
     if (fields.length < 3) continue;
     const device = decodeMountField(fields[0]);
@@ -136,7 +136,7 @@ async function collectTemperatures() {
     }
   };
 
-  for (const [root, pattern] of [[SYS_THERMAL, /^thermal_zone\\d+$/], [SYS_HWMON, /^hwmon\\d+$/]]) {
+  for (const [root, pattern] of [[SYS_THERMAL, /^thermal_zone\d+$/], [SYS_HWMON, /^hwmon\d+$/]]) {
     let entries;
     try {
       entries = await readdir(root);
@@ -163,8 +163,8 @@ async function collectTemperatures() {
         if (error.code === 'ENOENT' || error.code === 'EACCES') return;
         throw error;
       }
-      await Promise.all(names.filter((name) => /^temp\\d+_input$/.test(name)).map(async (filename) => {
-        const index = filename.match(/^temp(\\d+)_input$/)?.[1];
+      await Promise.all(names.filter((name) => /^temp\d+_input$/.test(name)).map(async (filename) => {
+        const index = filename.match(/^temp(\d+)_input$/)?.[1];
         let label = `${entry} temp${index}`;
         try {
           label = (await readFile(`${directory}/temp${index}_label`, 'utf8')).trim() || label;
@@ -182,7 +182,7 @@ async function collectProcesses(previousTicks, totalTicksDelta, cpuCount) {
   const entries = await readdir(PROC, { withFileTypes: true });
   const processes = [];
   const nextTicks = new Map();
-  const candidates = entries.filter((entry) => entry.isDirectory() && /^\\d+$/.test(entry.name));
+  const candidates = entries.filter((entry) => entry.isDirectory() && /^\d+$/.test(entry.name));
   let next = 0;
   const readWorker = async () => {
     while (next < candidates.length) {
@@ -195,7 +195,7 @@ async function collectProcesses(previousTicks, totalTicksDelta, cpuCount) {
         ]);
         const stat = parseProcStat(statText);
         nextTicks.set(pid, stat.cpuTicks);
-        const rss = Number(statusText.match(/^VmRSS:\\s+(\\d+)\\s+kB$/m)?.[1] ?? 0) * 1024;
+        const rss = Number(statusText.match(/^VmRSS:\s+(\d+)\s+kB$/m)?.[1] ?? 0) * 1024;
         const previous = previousTicks.get(pid);
         const cpuPercent = previous !== undefined && totalTicksDelta > 0
           ? Math.max(0, ((stat.cpuTicks - previous) / totalTicksDelta) * cpuCount * 100)
@@ -268,17 +268,17 @@ function createLinuxMetricsCollector() {
 }
 
 export function parseDarwinNetwork(text) {
-  const lines = text.trim().split('\\n');
-  const header = lines.find((line) => /\\bIbytes\\b/.test(line));
+  const lines = text.trim().split('\n');
+  const header = lines.find((line) => /\bIbytes\b/.test(line));
   if (!header) return {};
-  const columns = header.trim().split(/\\s+/);
+  const columns = header.trim().split(/\s+/);
   const rxIndex = columns.indexOf('Ibytes');
   const txIndex = columns.indexOf('Obytes');
   const nameIndex = columns.indexOf('Name');
   if (rxIndex < 0 || txIndex < 0 || nameIndex < 0) return {};
   const interfaces = {};
   for (const line of lines.slice(lines.indexOf(header) + 1)) {
-    const fields = line.trim().split(/\\s+/);
+    const fields = line.trim().split(/\s+/);
     if (fields.length <= Math.max(rxIndex, txIndex, nameIndex)) continue;
     const name = fields[nameIndex];
     const rxBytes = Number(fields[rxIndex]);
@@ -294,8 +294,8 @@ export function parseDarwinNetwork(text) {
 }
 
 export function parseDarwinProcesses(text) {
-  return text.split('\\n').flatMap((line) => {
-    const match = line.trim().match(/^(\\d+)\\s+(\\d+)\\s+(\\S+)\\s+([\\d.]+)\\s+(\\d+)\\s+(.+)$/);
+  return text.split('\n').flatMap((line) => {
+    const match = line.trim().match(/^(\d+)\s+(\d+)\s+(\S+)\s+([\d.]+)\s+(\d+)\s+(.+)$/);
     if (!match) return [];
     const [, pid, ppid, state, cpu, rss, name] = match;
     return [{
@@ -310,8 +310,8 @@ export function parseDarwinProcesses(text) {
 }
 
 export function parseDarwinDisks(text) {
-  return text.split('\\n').slice(1).flatMap((line) => {
-    const fields = line.trim().split(/\\s+/);
+  return text.split('\n').slice(1).flatMap((line) => {
+    const fields = line.trim().split(/\s+/);
     if (fields.length < 6 || !fields[0].startsWith('/dev/')) return [];
     const total = Number(fields[1]) * 1024;
     const used = Number(fields[2]) * 1024;
@@ -341,9 +341,9 @@ async function runSystemCommand(command, args) {
 
 async function collectDarwinMemory() {
   const output = await runSystemCommand('/usr/bin/vm_stat', []);
-  const pageSize = Number(output.match(/page size of (\\d+) bytes/)?.[1]);
+  const pageSize = Number(output.match(/page size of (\d+) bytes/)?.[1]);
   if (!Number.isFinite(pageSize) || pageSize <= 0) throw new Error('Unable to read macOS VM page size');
-  const pages = (label) => Number(output.match(new RegExp(`^Pages ${label}:\\\\s+(\\\\d+)`, 'm'))?.[1] ?? 0);
+  const pages = (label) => Number(output.match(new RegExp(`^Pages ${label}:\\s+(\\d+)`, 'm'))?.[1] ?? 0);
   const available = (pages('free') + pages('inactive') + pages('speculative')) * pageSize;
   const total = os.totalmem();
   const used = Math.max(0, total - available);
