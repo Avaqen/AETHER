@@ -1,0 +1,34 @@
+[Unit]
+Description=Linux Health Dashboard
+After=local-fs.target
+
+[Service]
+Type=simple
+User=healthdash
+Group=healthdash
+WorkingDirectory=/opt/linux-health-dashboard
+Environment=NODE_ENV=production
+Environment=HEALTHDASH_HOST=127.0.0.1
+Environment=HEALTHDASH_PORT=8765
+Environment=HEALTHDASH_CREDENTIALS_FILE=/var/lib/aether/credentials.json
+ExecStart=/usr/bin/node /opt/linux-health-dashboard/server.mjs
+Restart=on-failure
+RestartSec=3
+StateDirectory=aether
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6
+CapabilityBoundingSet=
+ReadOnlyPaths=/proc /sys
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
