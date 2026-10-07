@@ -378,7 +378,7 @@ function renderProcessDetail(process) {
   panel.replaceChildren();
   const heading = createElement('div', 'detail-heading');
   const title = createElement('div');
-  title.append(createElement('div', 'eyebrow', 'PROCESS DOSSIER'), createElement('h2', '', process.name));
+  title.append(createElement('div', 'eyebrow', 'PROCESS DOSSIER'), createElement('h2', '', process?.name ?? 'Process details'));
   const close = createElement('button', 'detail-close', '×');
   close.type = 'button';
   close.setAttribute('aria-label', 'Clear selected process');
